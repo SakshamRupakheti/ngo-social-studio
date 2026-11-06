@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RefreshCw, UserPlus } from "lucide-react";
+import { Copy, RefreshCw, UserPlus } from "lucide-react";
 import { platforms, names, type Role } from "../../packages/shared/model.ts";
 import type { PageProps } from "./composer.tsx";
 import { Network } from "./primitives.tsx";
@@ -12,6 +12,15 @@ export function Settings({ w, refresh, notify }: PageProps) {
     [busy, lock] = useState(false),
     [error, report] = useState("");
   const admin = w.user.role === "administrator";
+  const workspaceUrl = new URL("/", window.location.origin).href;
+  async function copyWorkspaceUrl() {
+    try {
+      await navigator.clipboard.writeText(workspaceUrl);
+      notify("Workspace link copied.");
+    } catch {
+      notify("Select the workspace address and copy it manually.");
+    }
+  }
   async function mutate(path: string, body: unknown) {
     report("");
     lock(true);
@@ -45,6 +54,35 @@ export function Settings({ w, refresh, notify }: PageProps) {
         </div>
         <section>
           <h2>Workspace</h2>
+          {w.local ? (
+            <p className="muted">
+              This preview runs on your computer. The hosted workspace will have
+              a link you can share with invited teammates.
+            </p>
+          ) : (
+            <div>
+              <label>
+                Team workspace link
+                <input
+                  type="url"
+                  readOnly
+                  value={workspaceUrl}
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+              </label>
+              <button
+                type="button"
+                className="secondary"
+                onClick={copyWorkspaceUrl}
+              >
+                <Copy size={14} />
+                Copy workspace link
+              </button>
+              <p className="hint">
+                Each teammate signs in with their invited email address.
+              </p>
+            </div>
+          )}
           <form
             onSubmit={(e) => {
               e.preventDefault();

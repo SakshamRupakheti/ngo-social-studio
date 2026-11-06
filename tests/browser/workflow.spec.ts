@@ -26,6 +26,51 @@ async function workspace(api: APIRequestContext): Promise<Workspace> {
 async function post(api: APIRequestContext, path: string, data: unknown = {}) {
   return api.post(path, { data, headers });
 }
+test("workspace sharing keeps sign-in and membership checks on every request", async ({
+  page,
+  browser,
+}) => {
+  await login(page, "administrator");
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await expect(
+    page.getByText(/This preview runs on your computer/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Copy workspace link" }),
+  ).toHaveCount(0);
+
+  const designer = await browser.newPage({ baseURL: origin });
+  await login(designer, "designer");
+  const member = (await workspace(designer.request)).user;
+  const changeAccess = (active: boolean) =>
+    post(page.request, "/api/members", { ...member, active });
+  try {
+    expect((await changeAccess(false)).ok()).toBeTruthy();
+    expect((await designer.request.get("/api/workspace")).status()).toBe(403);
+  } finally {
+    expect((await changeAccess(true)).ok()).toBeTruthy();
+  }
+  expect((await designer.request.get("/api/workspace")).status()).toBe(200);
+  await designer.close();
+
+  // Exercise the hosted presentation without sending test data to a cloud account.
+  await page.route("**/api/workspace", async (route) => {
+    const response = await route.fetch();
+    const data: Workspace = await response.json();
+    await route.fulfill({ response, json: { ...data, local: false } });
+  });
+  await page.reload();
+  await expect(page.getByLabel("Team workspace link")).toHaveValue(
+    origin + "/",
+  );
+  await page
+    .context()
+    .grantPermissions(["clipboard-read", "clipboard-write"], { origin });
+  await page.getByRole("button", { name: "Copy workspace link" }).click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(origin + "/");
+});
 test("designer draft, approval boundary, scheduled jobs and mixed delivery", async ({
   page,
   browser,
