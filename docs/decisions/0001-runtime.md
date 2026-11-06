@@ -1,0 +1,15 @@
+# Single-organization deployment
+
+One Worker serves the React bundle, protected HTTP API, and scheduled handler. D1 stores durable editorial state. Private R2 objects use random IDs and have no public bucket routing. This keeps the core product independent of the browser, AI services and a local server.
+
+**Identity.** Cloudflare Access handles sign-in, identity recovery, cookie issuance and expiration. The Worker verifies the Access JWT signature, issuer, audience and expiry with jose, then loads the current active role from D1. This replaces a second password and email-delivery system. The loopback preview uses a separate source entry, randomized signed test sessions and .test identities. The production bundle has no role chooser endpoint.
+
+**Data.** The initial deployment has one organization row. Each database, bucket, Access audience, Worker and Buffer organization belongs to one installation. Shared multi-tenant databases require an explicit migration before use. Drizzle reads typed membership records. Versioned SQLite migrations and parameterized D1 statements implement transitions and triggers. Uploaded files are independent entities. A post currently references one image and holds its three optional caption overrides as JSON. A future ordered join table can extend the media relation.
+
+**Workflow.** New posts are drafts. Submission validates media and the effective caption of each selected network. An administrator approves, rejects or requests changes. Saving a revision of approved content returns it to draft. Only an administrator can dispatch the approved revision. A compare-and-swap update and a database trigger snapshot the channel IDs, captions, media, schedule and per-channel delivery tokens in one transaction. Approval history is append-only within the application. Revisions accompany every update, protecting against two editors saving stale content.
+
+**Delivery.** The cron handler runs every five minutes and claims at most six due jobs. A stale sending claim becomes unknown. Each dispatch revision and platform is unique. Provider acceptance stores a Buffer ID. A later read of that ID reconciles delivery, normally at or after the scheduled instant and at half-hour intervals. Provider timeouts with no ID require an operator to inspect Buffer. The system deliberately offers no resend for such jobs. A definitive pre-acceptance rejection can expose an administrator retry. A 429 persists a shared dispatch cooldown. The dispatch speed and polling interval trade freshness for free-tier quota headroom.
+
+**Editing a schedule.** Cancel the local handoff while every channel remains queued, or cancel each confirmed future Buffer schedule while the provider allows deletion. Reopen the cancelled post, edit and resubmit for approval. A completed publication is permanent in this app. A cancellation with ambiguous confirmation enters reconciliation.
+
+**Optional assistance.** The shared package contains a narrow caption-suggestion interface. There is no provider implementation, AI request, runtime cost or publishing authority attached to it.

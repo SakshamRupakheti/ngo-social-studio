@@ -1,0 +1,11 @@
+# GitHub maintainer setup
+
+The checkout is local. A maintainer with authority over the NGO's GitHub organization must complete the following steps.
+
+1. Create an empty repository under the NGO organization. Use the name `ngo-social-studio`, description “Private editorial approvals and social publishing for nonprofit teams,” MIT license already included locally, and topics `nonprofit`, `social-publishing`, `cloudflare-workers`, `typescript`. Review all tracked files before choosing public visibility.
+2. Have a maintainer review the local initial release and run its checks. Add the exact NGO repository URL with `git remote add origin URL`. Push the reviewed baseline with `git push -u origin main`. Use short-lived feature branches and the supplied pull-request template for subsequent changes. Push the release candidate tag separately after CI passes.
+3. In Settings → Rules → Rulesets target main. Require a pull request, at least one independent approval, resolved conversations and the **verify** status check from Verify. Block force pushes and branch deletion. Restrict bypass. Enable squash merges and delete merged branches.
+4. Create the real maintainer team and grant write access. Replace the commented example in CODEOWNERS with its GitHub handle. Enable required code owner review once ownership resolves.
+5. Enable dependency graph, Dependabot alerts and security updates, secret scanning, push protection where available, and private vulnerability reporting. Configure a private security contact before making the repository public. Set Actions default token permissions to read-only.
+6. Keep deployment manual from reviewed main. Use distinct Cloudflare preview and production resources. Enable required reviewers and restrict eligible branches on any GitHub deployment environment before adding credentials. Use account-scoped, least-privilege tokens restricted to the intended Worker, D1 database and R2 bucket. No deployment workflow runs from pull-request code.
+7. Create milestones for local release candidate, authenticated staging smoke test, and production acceptance. Attach issues for outstanding gates in TASKS.md. Publish the RC tag only after review. Use a new semantic-version tag for production acceptance and record verified changes in CHANGELOG.md.
