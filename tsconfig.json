@@ -5,24 +5,11 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "jsx": "react-jsx",
-    "lib": [
-      "ES2023",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "types": [
-      "@cloudflare/workers-types",
-      "node"
-    ],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["@cloudflare/workers-types", "node"],
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": [
-    "apps",
-    "packages",
-    "scripts",
-    "tests",
-    "*.ts"
-  ]
+  "include": ["apps", "packages", "scripts", "tests", "*.ts"]
 }
