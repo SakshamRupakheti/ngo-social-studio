@@ -52,6 +52,7 @@ export function createApp(identity:Identity,providerFor:(env:Env)=>Provider|null
   if(!user)fail(403,'Ask your administrator for a workspace invitation.');
   c.set('user',user);await next();
  });
+ app.get('/api/login',c=>c.redirect('/'));
  app.get('/api/workspace',async c=>{
   const user=c.get('user'),db=c.env.DB,scope=[user.email,Number(user.role==='administrator')];
   const [org,posts,media,channels,jobs,team]=await Promise.all([
