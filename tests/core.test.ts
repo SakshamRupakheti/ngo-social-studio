@@ -55,6 +55,24 @@ describe("approval validation", () => {
       } as Media),
     ).toMatch(/Instagram/);
   });
+  it("uses the shared caption only for an empty platform override", () => {
+    const media = { width: 600, height: 600 } as Media;
+    expect(validateSubmission("Shared", { linkedin: "" }, media)).toBe("");
+    expect(validateSubmission("Shared", { linkedin: " \n\t" }, media)).toBe(
+      "Write a caption for LinkedIn.",
+    );
+  });
+  it("counts surrounding whitespace in both shared and platform captions", () => {
+    const media = { width: 600, height: 600 } as Media;
+    const limit = "x".repeat(3000);
+    expect(validateSubmission(limit, { linkedin: "" }, media)).toBe("");
+    expect(validateSubmission(limit + " ", { linkedin: "" }, media)).toMatch(
+      /character limit/,
+    );
+    expect(validateSubmission("", { linkedin: " " + limit }, media)).toMatch(
+      /character limit/,
+    );
+  });
   it("keeps partial delivery distinguishable", () =>
     expect(
       status({

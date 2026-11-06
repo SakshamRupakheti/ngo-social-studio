@@ -98,8 +98,8 @@ export function validateSubmission(
   if (!Object.keys(variants).length) return "Choose at least one platform.";
   for (const platform of platforms) {
     if (!(platform in variants)) continue;
-    const text = variants[platform]?.trim() || caption.trim();
-    if (!text) return "Write a caption for " + names[platform] + ".";
+    const text = variants[platform] || caption;
+    if (!text.trim()) return "Write a caption for " + names[platform] + ".";
     const length =
       platform === "linkedin"
         ? text.replace(/https?:\/\/\S+/g, "x".repeat(24)).length
