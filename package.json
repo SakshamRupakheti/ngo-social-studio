@@ -1,0 +1,45 @@
+{
+  "name": "ngo-social-studio",
+  "private": true,
+  "version": "0.1.0-rc.1",
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "dev": "node --experimental-strip-types scripts/local.ts",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "lint": "biome lint apps packages scripts tests",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "check": "pnpm typecheck && pnpm test && pnpm build"
+  },
+  "dependencies": {
+    "hono": "4.13.16",
+    "jose": "6.2.15",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7",
+    "drizzle-orm": "0.45.4",
+    "image-size": "2.1.0",
+    "lucide-react": "^0.577.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.6",
+    "@cloudflare/workers-types": "5.20261106.1",
+    "@playwright/test": "1.65.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.3",
+    "vite": "8.3.6",
+    "vitest": "5.1.0",
+    "wrangler": "4.158.0",
+    "tailwindcss": "4.3.5",
+    "@tailwindcss/vite": "4.3.5"
+  }
+}
