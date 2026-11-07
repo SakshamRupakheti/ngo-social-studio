@@ -2,7 +2,7 @@
 
 Folio is a private publishing desk for a nonprofit communications team. A designer prepares a graphic and captions. An administrator reviews the exact revision and authorizes distribution to the organization's LinkedIn, Instagram and Facebook accounts. In a configured deployment, Cloudflare Workers and Buffer handle delivery while team members are offline.
 
-**Release status:** release candidate. The provider adapter uses the official Buffer API. Local verification uses Cloudflare's D1 emulator, Chromium, and an isolated mock publishing provider. Production identity, public image fetches from Buffer, live network delivery and recovery in the NGO's account require the deployment acceptance checks.
+**Release status:** release candidate. The shared staging workspace is live at [Folio](https://ngo-social-studio-staging.ngo-social-studio.workers.dev). Hosted account enrollment, password sign-in, session protection and private image storage passed cloud checks. The provider adapter uses the official Buffer API; publishing tests use an isolated mock provider. Buffer authorization, public image fetches from Buffer, real network delivery and the NGO's recovery drill remain acceptance gates.
 
 ![Desktop overview of the application running with isolated test data](docs/screens/overview-1440.png)
 
@@ -70,7 +70,7 @@ pnpm audit --prod --audit-level high
 pnpm exec wrangler deploy --dry-run
 ```
 
-On Linux CI, install Chromium with `--with-deps`. To use an existing Chrome installation, set `STUDIO_CHROME` to the executable path. Browser tests start isolated loopback Workers on ports 8791 and 8792, apply the real migrations, upload actual image bytes, and exercise the same API used in production. The test-only provider and clock controls are excluded from the production entry point. `STUDIO_SCREENSHOTS=1` captures the two workspace screens at desktop, tablet and mobile widths. Test state is stored beneath the ignored `.local` directory.
+On Linux CI, install Chromium with `--with-deps`. To use an existing Chrome installation, set `STUDIO_CHROME` to the executable path. Browser tests start isolated loopback Workers on ports 8791, 8792 and 8793, apply the real migrations, upload actual image bytes, and exercise the same API used in production. The third Worker tests real password accounts and private invitations. The test-only provider, identity bootstrap and clock controls are excluded from the production entry point. `STUDIO_SCREENSHOTS=1` captures the two workspace screens at desktop, tablet and mobile widths. Test state is stored beneath the ignored `.local` directory.
 
 ## Operating envelope
 
