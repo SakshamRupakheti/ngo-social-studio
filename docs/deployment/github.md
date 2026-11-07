@@ -1,6 +1,6 @@
 # GitHub maintainer setup
 
-The checkout is local. A maintainer with authority over the NGO's GitHub organization must complete the following steps.
+The initial repository is published under SakshamRupakheti/ngo-social-studio. Main protection, read-only CI credentials, dependency alerts and security reporting are enabled. The checklist below describes ongoing maintenance and a future transfer to an NGO-controlled organization.
 
 1. Create an empty repository under the NGO organization. Use the name `ngo-social-studio`, description “Private editorial approvals and social publishing for nonprofit teams,” MIT license already included locally, and topics `nonprofit`, `social-publishing`, `cloudflare-workers`, `typescript`. Review all tracked files before choosing public visibility.
 2. Have a maintainer review the local initial release and run its checks. Add the exact NGO repository URL with `git remote add origin URL`. Push the reviewed baseline with `git push -u origin main`. Use short-lived feature branches and the supplied pull-request template for subsequent changes. Push the release candidate tag separately after CI passes.

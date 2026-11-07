@@ -31,6 +31,11 @@
 
 ## GitHub publication
 
-The source and existing commit history are published at https://github.com/SakshamRupakheti/ngo-social-studio. The main branch contains the initial release candidate, and the team-sharing update is on feat/share-workspace. The v0.1.0-rc.1 tag is also pushed. The account owner is the initial code owner. GitHub CI and repository protection are being verified during publication.
+The source and existing commit history are published at https://github.com/SakshamRupakheti/ngo-social-studio. The main branch contains the initial release candidate, and the team-sharing update is in pull request #3 on feat/share-workspace. The v0.1.0-rc.1 tag is pushed.
+
+GitHub's Verify workflow passed on main and the team-sharing pull request, including frozen dependency installation, formatting, lint, type checks, unit tests, browser tests, production build and the dependency audit. Main requires the verify check, a pull request approval and resolved conversations. Force pushes and branch deletion are disabled. Administrator bypass remains available to the repository owner. Dependency alerts, automated security fixes, private vulnerability reporting, secret scanning and push protection are enabled. The initial CODEOWNERS assignment is included in pull request #3.
+
+- Main CI evidence is available at https://github.com/SakshamRupakheti/ngo-social-studio/actions/runs/42334165622.
+- Team-sharing CI evidence is available at https://github.com/SakshamRupakheti/ngo-social-studio/actions/runs/42334225051.
 
 Cloudflare authorization is still required before provisioning the hosted workspace. The administrator address supplied by the owner is stored only in an ignored local bootstrap file. Buffer credentials are also pending. Follow docs/deployment/cloudflare.md for the remaining cloud and live-publishing acceptance steps.
