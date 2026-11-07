@@ -1,6 +1,6 @@
 import { imageSize } from "image-size";
 import { HTTPException } from "hono/http-exception";
-const maximum = 5 * 1024 * 1024;
+import { maximumImageBytes } from "../../packages/shared/model.ts";
 function hasPayload(bytes: Uint8Array, png: boolean) {
   if (!png) {
     // A JPEG must have a start-of-scan marker in addition to a supported frame.
@@ -41,10 +41,10 @@ export async function readGraphic(req: Request) {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.byteLength;
-    if (size > maximum) {
+    if (size > maximumImageBytes) {
       await reader.cancel();
       throw new HTTPException(413, {
-        message: "The maximum image size is 5 MB.",
+        message: "The maximum image size is 1 MB.",
       });
     }
     chunks.push(value);

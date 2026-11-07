@@ -16,12 +16,6 @@
       "migrations_dir": "migrations"
     }
   ],
-  "r2_buckets": [
-    {
-      "binding": "MEDIA",
-      "bucket_name": "ngo-social-studio-media"
-    }
-  ],
   "triggers": {
     "crons": ["*/5 * * * *"]
   }

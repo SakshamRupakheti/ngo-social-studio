@@ -1,6 +1,6 @@
 # Cloudflare deployment and first launch
 
-Use an NGO-controlled Cloudflare account. Resource names below are examples for a new installation. Review account plans and R2 billing terms before provisioning. This repository performs no remote provisioning during installation or tests.
+Use an NGO-controlled Cloudflare account on Workers Free. Resource names below are examples for a new installation. This version stores both records and images in D1 and requires no R2 subscription. Installation and tests create no remote resources.
 
 ## 0. Set up the account
 
@@ -10,13 +10,13 @@ Once the dashboard opens, continue to Workers & Pages. This deployment can use a
 
 Dashboard sign-in and Wrangler authorization are separate steps. From the repository, run `pnpm exec wrangler login`, review the requested permissions in the browser, then check the selected account with `pnpm exec wrangler whoami`. If a device authorization code expires, start a new login instead of reusing it. Multiple Cloudflare accounts require an explicit choice before creating resources.
 
-R2 needs a separate subscription activation through its checkout, even though it includes a monthly free allowance. Review the current checkout and usage pricing with the account owner before activating it. Account creation alone does not deploy the workspace. The remaining steps create storage, configure member sign-in, and connect Buffer.
+Keep R2 and Workers Paid disabled for a zero-spend installation. D1 Free rejects operations at its quota instead of charging overages. Cloudflare Access has a Free plan; its onboarding may request payment details even though that plan is $0. Review the exact selected plan before completing onboarding, and stop if any paid service or usage-based subscription is requested. Account creation alone does not deploy the workspace.
 
-References: [Create a Cloudflare account](https://developers.cloudflare.com/fundamentals/account/create-account/), [Workers CLI setup](https://developers.cloudflare.com/workers/get-started/guide/), [R2 activation](https://developers.cloudflare.com/r2/get-started/).
+References: [Create a Cloudflare account](https://developers.cloudflare.com/fundamentals/account/create-account/), [Workers CLI setup](https://developers.cloudflare.com/workers/get-started/guide/), [D1 Free limits](https://developers.cloudflare.com/d1/reference/faq/), [Access onboarding](https://developers.cloudflare.com/cloudflare-one/setup/).
 
 ## 1. Create isolated resources
 
-Use Node 24 and pnpm from the repository's packageManager field. Install with `pnpm install --frozen-lockfile`. Log in using `pnpm exec wrangler login`. Provision a D1 database with `pnpm exec wrangler d1 create studio` and a private Standard R2 bucket with `pnpm exec wrangler r2 bucket create ngo-social-studio-media`. Keep R2 public development URLs and bucket domains disabled.
+Use Node 24 and pnpm from the repository's packageManager field. Install with `pnpm install --frozen-lockfile`. Log in using `pnpm exec wrangler login`. Provision a D1 database with `pnpm exec wrangler d1 create studio`. Images use the same database and remain private behind the application's authorization checks.
 
 Copy `wrangler.jsonc` to an ignored `.local/wrangler.production.json` **only if you also adjust its relative main, assets and migrations paths**. Alternatively set the D1 ID and production resource names in the tracked root config. Use separate resource names, audience and Worker for staging. Keep staging's Buffer key absent until a specifically authorized test. Local development always uses local bindings.
 
@@ -41,22 +41,28 @@ Store the key using `pnpm exec wrangler secret put BUFFER_API_KEY`. Use the hidd
 ## 4. Verify before publishing
 
 - Sign in and sign out with each real role. Check session expiry and denied access from an uninvited identity and an unsigned request.
-- Upload a nonconfidential test image. Confirm private media returns an authorization error in an anonymous window. Validate D1 persistence and the expected R2 content type.
+- Upload a nonconfidential test image. Confirm private media returns an authorization error in an anonymous window. Validate D1 persistence, image bytes and content type.
 - Confirm scheduled triggers are active under Worker Triggers. Record the production Worker version, migration numbers and account limits.
 - First use the deterministic local suite. A live end-to-end test requires separate explicit authorization for the image, caption, channels and time. During an authorized staging handoff verify that Buffer can fetch the exact delivery URL without authentication. Check the actual network post, its Buffer ID and each final status before accepting production.
-- Configure monitoring for Worker errors, queue age, unknown jobs, R2 storage/operations, D1 usage and Buffer quotas. Recheck limits before launch and when volume changes.
+- Monitor Worker errors, queue age, unknown jobs, D1 storage/operations and Buffer quotas. Recheck limits before launch and when volume changes.
 - Set the NGO's retention policy, operational contact and member-facing privacy/terms text before general use.
 
 ## Failure handling and recovery
 
 For unknown with an external ID, leave the job in reconciliation and inspect the same ID in Buffer. Without an ID, compare the channel, caption, media and UTC time in Buffer and the social network. Capture evidence in a private incident record. Never requeue or recreate an ambiguous job without resolving whether it published. Automatic matching by caption alone would risk a duplicate. Restore missing secrets or channel permissions before using a displayed retry. For a full queue, wait for a slot or free one in Buffer.
 
-Export a protected D1 backup with `pnpm exec wrangler d1 export studio --remote --output PRIVATE_BACKUP.sql` into an approved restricted directory. Back up the private R2 keys and bytes separately via the S3-compatible API and scoped read-only credentials. Store the two backups together with timestamp, migration version, secret references and restoration instructions. Delivery tokens in the database are sensitive. Use the account's available D1 Time Travel retention and rehearse in staging.
+Export a protected D1 backup with `pnpm exec wrangler d1 export studio --remote --output PRIVATE_BACKUP.sql` into an approved restricted directory. It includes image BLOBs as well as editorial records. Keep its timestamp, migration version, secret references and restoration instructions. Images and delivery tokens in the database are sensitive. Use the account's available D1 Time Travel retention and rehearse in staging.
 
-**Restore drill.** Pause the cron or remove the Buffer key before restoring. Restore D1 and R2 into isolated resources, verify row counts, foreign keys, representative hashes, sign-in, draft thumbnails and event histories. Reconcile every in-flight or post-backup job with Buffer before enabling dispatch. A database rollback alone can recreate already submitted work. Re-enable production only after the operator records the outcome. D1 recovery cannot restore deleted media.
+**Restore drill.** Pause the cron or remove the Buffer key before restoring. Restore D1 into an isolated database, verify row counts, foreign keys, representative image hashes, sign-in, draft thumbnails and event histories. Confirm `media_storage.used_bytes` equals `SUM(length(data))` in `media_bytes`. Reconcile every in-flight or post-backup job with Buffer before enabling dispatch. A database rollback alone can recreate already submitted work. Re-enable production only after the operator records the outcome.
+
+**Earlier R2 installations.** Migration 0004 adds D1 image storage but does not copy old R2 objects. Before upgrading an installation that has uploads, export and retain its media, copy eligible images into `media_bytes` using the original media IDs, and verify their hashes and the storage counter in staging. The new per-image limit is 1 MiB; larger legacy images need a separately reviewed migration. Keep the previous deployment and storage until that migration is verified. An empty first installation requires no copy.
+
+**Media capacity.** Uploads stop at 100 MiB of image bytes. An operator can export and remove unused media records only after confirming that no post or job references them. Deleting the metadata cascades to its bytes and reclaims capacity. There is no automatic deletion of team content. A member-facing archive tool is a future improvement.
 
 ## Capacity
 
-Workers Free lists 100,000 requests/day and 10 ms CPU per request or cron invocation. D1 and R2 have separate row, storage and operations allowances. R2 overages can incur charges even on a small installation. Buffer Free supports up to three connected channels and ten queued posts per channel at once. Buffer also enforces request windows. Budget reads as well as writes. There is no paid AI requirement. Review current plans and observed workload before promising a monthly cost.
+Workers Free lists 100,000 requests/day and 10 ms CPU per request or cron invocation. D1 Free limits each database to 500 MB and imposes daily read/write quotas; exhausted quotas reject operations. This app further caps each image at 1 MiB and all media at 100 MiB, reserving space for records and database overhead. The API and database both enforce the image limit, and a transactional trigger enforces shared capacity. Upload and media responses must also fit the Free CPU allowance; test representative graphics on the actual deployment. Keep Workers Free selected so an exceeded quota stops service rather than creating a paid overage. There is no automatic plan upgrade in this app.
 
-[Worker limits](https://developers.cloudflare.com/workers/platform/limits/) · [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/) · [R2 pricing](https://developers.cloudflare.com/r2/pricing/) · [Buffer queue capacity](https://support.buffer.com/en-us/articles/how-many-posts-can-i-schedule-in-advance-Kmy2IEecqm) · [Buffer API limits](https://developers.buffer.com/guides/api-limits) · [Access JWT validation](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)
+Buffer Free supports up to three connected channels and ten queued posts per channel at once. Buffer also enforces request windows. Keep the Buffer account on Free. There is no paid AI requirement.
+
+[Worker limits](https://developers.cloudflare.com/workers/platform/limits/) · [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/) · [D1 limits](https://developers.cloudflare.com/d1/platform/limits/) · [Buffer queue capacity](https://support.buffer.com/en-us/articles/how-many-posts-can-i-schedule-in-advance-Kmy2IEecqm) · [Buffer API limits](https://developers.buffer.com/guides/api-limits) · [Access JWT validation](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)

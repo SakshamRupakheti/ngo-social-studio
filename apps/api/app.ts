@@ -9,6 +9,7 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { eq, and } from "drizzle-orm";
 import {
   validateSubmission,
+  maximumImageBytes,
   type User,
   type Media,
   type Job,
@@ -53,12 +54,17 @@ async function getPost(env: Env, id: string, user: User) {
   return p;
 }
 async function bytesResponse(env: Env, id: string, mime: string) {
-  const file = await env.MEDIA.get(id);
+  const data = await env.DB.prepare(
+    "SELECT data FROM media_bytes WHERE media_id=?",
+  )
+    .bind(id)
+    .first<number[]>("data");
+  const file = data ? new Uint8Array(data) : null;
   return file
-    ? new Response(file.body, {
+    ? new Response(file, {
         headers: {
           "Content-Type": mime,
-          "Content-Length": String(file.size),
+          "Content-Length": String(file.byteLength),
           "Cache-Control": "private, no-store",
           "X-Content-Type-Options": "nosniff",
         },
@@ -129,9 +135,9 @@ export function createApp(
   app.use(
     "/api/*",
     bodyLimit({
-      maxSize: 5 * 1024 * 1024,
+      maxSize: maximumImageBytes,
       onError: (c) =>
-        c.json({ error: "The maximum upload size is 5 MB." }, 413),
+        c.json({ error: "The maximum upload size is 1 MB." }, 413),
     }),
   );
   app.get("/api/entry", (c) => c.json({ local }));
@@ -213,12 +219,9 @@ export function createApp(
         0,
         180,
       );
-    await c.env.MEDIA.put(id, image.bytes, {
-      httpMetadata: { contentType: image.mime },
-    });
     try {
-      await c.env.DB.prepare("INSERT INTO media VALUES(?,?,?,?,?,?,?,?)")
-        .bind(
+      await c.env.DB.batch([
+        c.env.DB.prepare("INSERT INTO media VALUES(?,?,?,?,?,?,?,?)").bind(
           id,
           c.get("user").email,
           name,
@@ -227,10 +230,18 @@ export function createApp(
           image.height,
           image.bytes.length,
           Date.now(),
-        )
-        .run();
+        ),
+        c.env.DB.prepare(
+          "INSERT INTO media_bytes(media_id,data) VALUES(?,?)",
+        ).bind(id, image.bytes),
+      ]);
     } catch (err) {
-      await c.env.MEDIA.delete(id);
+      if (err instanceof Error && err.message.includes("MEDIA_CAPACITY")) {
+        fail(
+          409,
+          "The workspace's 100 MB media limit is full. Ask your administrator to archive unused media before uploading more.",
+        );
+      }
       throw err;
     }
     return c.json({ id }, 201);

@@ -174,7 +174,7 @@ test("unsupported and oversized graphics and cross-origin mutations are rejected
   for (const [data, mime, code] of [
     [Buffer.from("<svg/>"), "image/svg+xml", 415],
     [Buffer.from("bad"), "image/png", 422],
-    [Buffer.alloc(5242881), "image/png", 413],
+    [Buffer.alloc(1048577), "image/png", 413],
   ] as const) {
     const res = await page.request.post("/api/media", {
       headers: { origin, "content-type": mime },

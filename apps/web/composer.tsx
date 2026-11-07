@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import {
   platforms,
+  maximumImageBytes,
   names,
   validateSubmission,
   type Platform,
@@ -75,8 +76,11 @@ export function Composer({
   async function choose(f?: File) {
     if (!f || busy) return;
     report("");
-    if (!["image/png", "image/jpeg"].includes(f.type) || f.size > 5242880) {
-      report("Choose a PNG or JPEG up to 5 MB.");
+    if (
+      !["image/png", "image/jpeg"].includes(f.type) ||
+      f.size > maximumImageBytes
+    ) {
+      report("Choose a PNG or JPEG up to 1 MB.");
       return;
     }
     lock(true);
@@ -186,7 +190,7 @@ export function Composer({
                 <>
                   <ImagePlus size={30} strokeWidth={1.3} />
                   <strong>Choose a graphic or drop it here</strong>
-                  <small>PNG or JPEG · Up to 5 MB</small>
+                  <small>PNG or JPEG · Up to 1 MB</small>
                 </>
               )}
             </button>
