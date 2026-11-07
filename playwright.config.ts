@@ -14,6 +14,7 @@ export default defineConfig({
   webServer: [
     ["--test", 8791],
     ["--offline-test", 8792],
+    ["--auth-test", 8793],
   ].map(([flag, port]) => ({
     command: "node scripts/local.ts " + flag,
     url: "http://127.0.0.1:" + port + "/api/entry",

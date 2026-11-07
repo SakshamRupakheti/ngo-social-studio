@@ -2,7 +2,7 @@
 
 Folio is a private publishing desk for a nonprofit communications team. A designer prepares a graphic and captions. An administrator reviews the exact revision and authorizes distribution to the organization's LinkedIn, Instagram and Facebook accounts. In a configured deployment, Cloudflare Workers and Buffer handle delivery while team members are offline.
 
-**Release status:** local release candidate. The provider adapter uses the official Buffer API. Local verification uses Cloudflare's D1 and R2 emulators, Chromium, and an isolated mock publishing provider. Production identity, public image fetches from Buffer, live network delivery and recovery in the NGO's account require the deployment acceptance checks.
+**Release status:** release candidate. The shared staging workspace is live at [Folio](https://ngo-social-studio-staging.ngo-social-studio.workers.dev). Hosted account enrollment, password sign-in, session protection and private image storage passed cloud checks. The provider adapter uses the official Buffer API; publishing tests use an isolated mock provider. Buffer authorization, public image fetches from Buffer, real network delivery and the NGO's recovery drill remain acceptance gates.
 
 ![Desktop overview of the application running with isolated test data](docs/screens/overview-1440.png)
 
@@ -21,38 +21,38 @@ Open **http://127.0.0.1:8787**. The loopback preview offers a Designer and an Ad
 ## What works
 
 - Role-scoped overview, media library, drafts, submissions and delivery history.
-- Drag-and-drop or file-picker upload, immediate image preview, shared captions, per-channel overrides and previews. A tab keeps unsaved edits across navigation. Saved drafts persist in D1 and R2.
+- Drag-and-drop or file-picker upload, immediate image preview, shared captions, per-channel overrides and previews. A tab keeps unsaved edits across navigation. Saved drafts and private image bytes persist together in D1.
 - Review comments, changes requested, rejection, approval and auditable revision history. Material edits reopen approved content as a draft.
 - A timezone-aware calendar, UTC schedules and snapshot-based channel jobs. Administrators can send approved content to the next cloud handoff or set a time at least ten minutes ahead. Scheduled results appear after Buffer accepts the individual channels.
 - Per-channel results, external IDs, queue-limit feedback, cancellation when eligible, conservative retry, delayed reconciliation and a distinct unknown state for uncertain handoffs.
-- Administrator-managed membership, organization settings and channel discovery. Production invites require both an active workspace membership and the organization's Access allow policy.
+- Administrator-managed membership, organization settings and channel discovery. Private expiring invitations create individual password accounts. Administrators can issue recovery links and revoke active sessions.
 - A provider-neutral caption-assistance type is available for a later iteration. All current workflows use ordinary code.
 
 ![Composer with original synthetic campaign artwork and a platform preview](docs/screens/composer-1440.png)
 
 ## Project map
 
-| Location        | Purpose                                                                                    |
-| --------------- | ------------------------------------------------------------------------------------------ |
-| apps/web        | React, Vite, Tailwind, design tokens and editorial screens                                 |
-| apps/api        | Hono Worker, Access JWT verification, Drizzle membership lookup, media and Buffer delivery |
-| packages/shared | Strict TypeScript models, caption validation and lifecycle display                         |
-| migrations      | Versioned D1 SQLite tables, indexes and transactional triggers                             |
-| scripts         | Loopback-only preview and isolated test identity/provider                                  |
-| tests           | Vitest contract tests and Playwright browser/Worker integration                            |
-| docs            | Decisions, actual browser captures, deployment and governance                              |
+| Location        | Purpose                                                                                 |
+| --------------- | --------------------------------------------------------------------------------------- |
+| apps/web        | React, Vite, Tailwind, design tokens and editorial screens                              |
+| apps/api        | Hono Worker, Better Auth sessions, Drizzle membership lookup, media and Buffer delivery |
+| packages/shared | Strict TypeScript models, caption validation and lifecycle display                      |
+| migrations      | Versioned D1 SQLite tables, indexes and transactional triggers                          |
+| scripts         | Loopback-only preview and isolated test identity/provider                               |
+| tests           | Vitest contract tests and Playwright browser/Worker integration                         |
+| docs            | Decisions, actual browser captures, deployment and governance                           |
 
 ## Deployment and configuration
 
-Follow [the Cloudflare runbook](docs/deployment/cloudflare.md) for a private workers.dev installation, remote migrations, first administrator, Access policies, Buffer setup, cloud cron, recovery and launch verification. Change the HTTPS media origin to use a custom domain later. Use separate Worker names, D1 databases, R2 buckets, audiences and credentials for staging and production.
+Follow [the Cloudflare runbook](docs/deployment/cloudflare.md) for a private workers.dev installation, remote migrations, first administrator, private invitations, Buffer setup, cloud cron, recovery and launch verification. Change the HTTPS media origin to use a custom domain later. Use separate Worker names, D1 databases and credentials for staging and production. Existing R2 installations must follow the runbook's image migration instructions before upgrading.
 
-| Binding                        | Purpose                                              |
-| ------------------------------ | ---------------------------------------------------- |
-| DB, MEDIA, ASSETS              | D1 database, private R2 bucket and compiled frontend |
-| ACCESS_TEAM_DOMAIN, ACCESS_AUD | Exact Access issuer and application audience         |
-| BUFFER_ORG_ID                  | Authorized Buffer organization for discovery         |
-| MEDIA_ORIGIN                   | Stable HTTPS origin for approved delivery bytes      |
-| BUFFER_API_KEY                 | Server-side Worker secret set with Wrangler          |
+| Binding                 | Purpose                                                      |
+| ----------------------- | ------------------------------------------------------------ |
+| DB, ASSETS              | D1 records and private images, compiled frontend             |
+| APP_ORIGIN, AUTH_SECRET | Exact workspace origin and server-side authentication secret |
+| BUFFER_ORG_ID           | Authorized Buffer organization for discovery                 |
+| MEDIA_ORIGIN            | Stable HTTPS origin for approved delivery bytes              |
+| BUFFER_API_KEY          | Server-side Worker secret set with Wrangler                  |
 
 The app stores private uploads by random object ID. An approved handoff creates an independent unguessable delivery URL per job. Its public response is limited to eligible delivery states and a seven-day grace period after successful publication. Images retain their original bytes and metadata. The current validator checks supported image headers, structural markers, size, dimensions, pixel count and trailer. A full raster decoder and metadata stripping are outside this release.
 
@@ -70,13 +70,13 @@ pnpm audit --prod --audit-level high
 pnpm exec wrangler deploy --dry-run
 ```
 
-On Linux CI, install Chromium with `--with-deps`. To use an existing Chrome installation, set `STUDIO_CHROME` to the executable path. Browser tests start isolated loopback Workers on ports 8791 and 8792, apply the real migrations, upload actual image bytes, and exercise the same API used in production. The test-only provider and clock controls are excluded from the production entry point. `STUDIO_SCREENSHOTS=1` captures the two workspace screens at desktop, tablet and mobile widths. Test state is stored beneath the ignored `.local` directory.
+On Linux CI, install Chromium with `--with-deps`. To use an existing Chrome installation, set `STUDIO_CHROME` to the executable path. Browser tests start isolated loopback Workers on ports 8791, 8792 and 8793, apply the real migrations, upload actual image bytes, and exercise the same API used in production. The third Worker tests real password accounts and private invitations. The test-only provider, identity bootstrap and clock controls are excluded from the production entry point. `STUDIO_SCREENSHOTS=1` captures the two workspace screens at desktop, tablet and mobile widths. Test state is stored beneath the ignored `.local` directory.
 
 ## Operating envelope
 
 The first release serves one NGO per deployment, one graphic per post, one mapped channel per network and a small editorial team. The workspace loads its visible records together. Add pagination and data-retention controls before growing to a large archive. Provider statuses are eventually consistent. Unexpected responses and ambiguous timeouts require investigation. Keep account access, media backups, retention and publishing rights under NGO control.
 
-The free-tier target depends on actual request, CPU, database and storage usage. Buffer Free's ten queued posts per channel is a simultaneous queue capacity. Account for separate API quotas. Check [Buffer limits](https://developers.buffer.com/guides/api-limits) and [Cloudflare quotas](docs/deployment/cloudflare.md#capacity) before launch.
+For zero-spend hosting, keep Workers and D1 on Free and leave R2 disabled. Images are limited to 1 MiB each and 100 MiB in total. Free-plan quotas stop operations rather than enabling paid overages; the app never upgrades a plan. Cloudflare Access is not required. Sign-in and invitations use the existing database without an email subscription. Buffer Free's ten queued posts per channel is a simultaneous queue capacity. Account for separate API quotas. Check [Buffer limits](https://developers.buffer.com/guides/api-limits) and [Cloudflare quotas](docs/deployment/cloudflare.md#capacity) before launch.
 
 ## Contributing and rights
 

@@ -1,4 +1,5 @@
 import { allowWrite } from "./limits.ts";
+import { accountRoutes, memberSetupLink } from "./accounts.ts";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
@@ -9,6 +10,7 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { eq, and } from "drizzle-orm";
 import {
   validateSubmission,
+  maximumImageBytes,
   type User,
   type Media,
   type Job,
@@ -53,12 +55,17 @@ async function getPost(env: Env, id: string, user: User) {
   return p;
 }
 async function bytesResponse(env: Env, id: string, mime: string) {
-  const file = await env.MEDIA.get(id);
+  const data = await env.DB.prepare(
+    "SELECT data FROM media_bytes WHERE media_id=?",
+  )
+    .bind(id)
+    .first<number[]>("data");
+  const file = data ? new Uint8Array(data) : null;
   return file
-    ? new Response(file.body, {
+    ? new Response(file, {
         headers: {
           "Content-Type": mime,
-          "Content-Length": String(file.size),
+          "Content-Length": String(file.byteLength),
           "Cache-Control": "private, no-store",
           "X-Content-Type-Options": "nosniff",
         },
@@ -129,12 +136,13 @@ export function createApp(
   app.use(
     "/api/*",
     bodyLimit({
-      maxSize: 5 * 1024 * 1024,
+      maxSize: maximumImageBytes,
       onError: (c) =>
-        c.json({ error: "The maximum upload size is 5 MB." }, 413),
+        c.json({ error: "The maximum upload size is 1 MB." }, 413),
     }),
   );
   app.get("/api/entry", (c) => c.json({ local }));
+  if (!local) app.route("/api", accountRoutes());
   app.use("/api/*", async (c, next) => {
     const email = await identity(c.req.raw, c.env);
     if (!email) return c.json({ error: "Sign in to continue." }, 401);
@@ -213,12 +221,9 @@ export function createApp(
         0,
         180,
       );
-    await c.env.MEDIA.put(id, image.bytes, {
-      httpMetadata: { contentType: image.mime },
-    });
     try {
-      await c.env.DB.prepare("INSERT INTO media VALUES(?,?,?,?,?,?,?,?)")
-        .bind(
+      await c.env.DB.batch([
+        c.env.DB.prepare("INSERT INTO media VALUES(?,?,?,?,?,?,?,?)").bind(
           id,
           c.get("user").email,
           name,
@@ -227,10 +232,18 @@ export function createApp(
           image.height,
           image.bytes.length,
           Date.now(),
-        )
-        .run();
+        ),
+        c.env.DB.prepare(
+          "INSERT INTO media_bytes(media_id,data) VALUES(?,?)",
+        ).bind(id, image.bytes),
+      ]);
     } catch (err) {
-      await c.env.MEDIA.delete(id);
+      if (err instanceof Error && err.message.includes("MEDIA_CAPACITY")) {
+        fail(
+          409,
+          "The workspace's 100 MB media limit is full. Ask your administrator to archive unused media before uploading more.",
+        );
+      }
       throw err;
     }
     return c.json({ id }, 201);
@@ -525,7 +538,41 @@ export function createApp(
     )
       .bind(email, role, Number(active))
       .run();
+    if (!active) {
+      await c.env.DB.batch([
+        c.env.DB.prepare(
+          "DELETE FROM auth_session WHERE user_id IN (SELECT id FROM auth_user WHERE email=?)",
+        ).bind(email),
+        c.env.DB.prepare("DELETE FROM invitations WHERE email=?").bind(email),
+      ]);
+    }
+    if (
+      active &&
+      !local &&
+      !(await c.env.DB.prepare("SELECT id FROM auth_user WHERE email=?")
+        .bind(email)
+        .first())
+    ) {
+      return c.json({ ok: true, ...(await memberSetupLink(c.env, email)) });
+    }
     return c.json({ ok: true });
+  });
+  app.post("/api/members/setup-link", async (c) => {
+    admin(c.get("user"));
+    if (local)
+      fail(400, "Account setup links are available in the hosted workspace.");
+    const { email } = z
+      .object({ email: z.email().toLowerCase() })
+      .parse(await c.req.json());
+    if (
+      !(await c.env.DB.prepare(
+        "SELECT email FROM members WHERE email=? AND active=1",
+      )
+        .bind(email)
+        .first())
+    )
+      fail(404, "Active member unavailable.");
+    return c.json(await memberSetupLink(c.env, email));
   });
   app.all("/api/*", (c) => c.json({ error: "Endpoint unavailable." }, 404));
   app.get("*", async (c) => {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RefreshCw, UserPlus } from "lucide-react";
+import { Copy, RefreshCw, UserPlus } from "lucide-react";
 import { platforms, names, type Role } from "../../packages/shared/model.ts";
 import type { PageProps } from "./composer.tsx";
 import { Network } from "./primitives.tsx";
@@ -10,13 +10,38 @@ export function Settings({ w, refresh, notify }: PageProps) {
     [email, setEmail] = useState(""),
     [role, setRole] = useState<Role>("designer"),
     [busy, lock] = useState(false),
+    [setup, setSetup] = useState<{
+      url: string;
+      kind: string;
+      email: string;
+    } | null>(null),
     [error, report] = useState("");
   const admin = w.user.role === "administrator";
+  const workspaceUrl = new URL("/", window.location.origin).href;
+  async function copyWorkspaceUrl() {
+    try {
+      await navigator.clipboard.writeText(workspaceUrl);
+      notify("Workspace link copied.");
+    } catch {
+      notify("Select the workspace address and copy it manually.");
+    }
+  }
   async function mutate(path: string, body: unknown) {
     report("");
+    if (path.startsWith("members")) setSetup(null);
     lock(true);
     try {
-      await request("/api/" + path, body);
+      const result = await request<{
+        url?: string;
+        kind?: string;
+        email?: string;
+      }>("/api/" + path, body);
+      if (result.url)
+        setSetup({
+          url: result.url,
+          kind: result.kind || "invitation",
+          email: result.email || email,
+        });
       await refresh();
       notify("Settings updated.");
     } catch (err) {
@@ -45,6 +70,35 @@ export function Settings({ w, refresh, notify }: PageProps) {
         </div>
         <section>
           <h2>Workspace</h2>
+          {w.local ? (
+            <p className="muted">
+              This preview runs on your computer. The hosted workspace will have
+              a link you can share with invited teammates.
+            </p>
+          ) : (
+            <div>
+              <label>
+                Team workspace link
+                <input
+                  type="url"
+                  readOnly
+                  value={workspaceUrl}
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+              </label>
+              <button
+                type="button"
+                className="secondary"
+                onClick={copyWorkspaceUrl}
+              >
+                <Copy size={14} />
+                Copy workspace link
+              </button>
+              <p className="hint">
+                Each teammate signs in with their invited email address.
+              </p>
+            </div>
+          )}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -109,15 +163,57 @@ export function Settings({ w, refresh, notify }: PageProps) {
           <section>
             <h2>Team access</h2>
             <p className="muted">
-              Allow members here and include their emails in your Cloudflare
-              Access policy.
+              Grant a role, then share the private invitation link with that
+              teammate. Existing members can receive a recovery link.
             </p>
+            {setup && (
+              <div className="note">
+                <label>
+                  Private {setup.kind} link
+                  <input
+                    readOnly
+                    value={setup.url}
+                    onFocus={(event) => event.currentTarget.select()}
+                  />
+                </label>
+                <p className="hint">
+                  Share this only with {setup.email}. Invitations expire in
+                  seven days; recovery links expire in one hour.
+                </p>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() =>
+                    void navigator.clipboard
+                      .writeText(setup.url)
+                      .then(() => notify("Private link copied."))
+                      .catch(() =>
+                        notify("Select the link and copy it manually."),
+                      )
+                  }
+                >
+                  Copy private link
+                </button>
+              </div>
+            )}
             {w.members.map((m) => (
               <div key={m.email} className="member">
                 <div>
                   <strong>{m.email}</strong>
                   <small>{m.role}</small>
                 </div>
+                {!w.local && (
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate("members/setup-link", { email: m.email })
+                    }
+                  >
+                    Setup / recovery link
+                  </button>
+                )}
                 {m.email !== w.user.email && (
                   <button
                     type="button"

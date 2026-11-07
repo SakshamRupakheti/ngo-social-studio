@@ -1,4 +1,5 @@
 export const platforms = ["linkedin", "instagram", "facebook"] as const;
+export const maximumImageBytes = 1024 * 1024;
 export type Platform = (typeof platforms)[number];
 export const names = {
   linkedin: "LinkedIn",

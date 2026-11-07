@@ -10,7 +10,7 @@ import {
   providerState,
   type WorkJob,
 } from "../apps/api/publishing.ts";
-import { identity } from "../apps/api/auth.ts";
+import { accountIdentity as identity } from "../apps/api/accounts.ts";
 import { createApp } from "../apps/api/app.ts";
 import { readGraphic } from "../apps/api/media.ts";
 import type { Env } from "../apps/api/types.ts";
@@ -82,7 +82,7 @@ describe("approval validation", () => {
     ).toBe("partial"));
 });
 describe("worker boundary", () => {
-  it("fails closed without valid Access configuration or token", async () => {
+  it("fails closed without account configuration and ignores asserted email headers", async () => {
     expect(
       await identity(
         new Request("https://example.org", {
