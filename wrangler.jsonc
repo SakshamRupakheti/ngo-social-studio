@@ -2,6 +2,8 @@
   "name": "ngo-social-studio",
   "main": "apps/api/worker.ts",
   "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "preview_urls": false,
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

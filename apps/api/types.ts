@@ -2,8 +2,8 @@ import type { User } from "../../packages/shared/model.ts";
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
-  ACCESS_TEAM_DOMAIN?: string;
-  ACCESS_AUD?: string;
+  APP_ORIGIN?: string;
+  AUTH_SECRET?: string;
   BUFFER_API_KEY?: string;
   BUFFER_ORG_ID?: string;
   MEDIA_ORIGIN?: string;

@@ -5,9 +5,14 @@ export async function request<T>(path: string, body?: unknown): Promise<T> {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok) {
-    const result = (await res.json().catch(() => ({}))) as { error?: string };
+    const result = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+    };
     throw new Error(
-      result.error || "Request failed. Sign in again or try refreshing.",
+      result.error ||
+        result.message ||
+        "Request failed. Sign in again or try refreshing.",
     );
   }
   return res.json() as Promise<T>;

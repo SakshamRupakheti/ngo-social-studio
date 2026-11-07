@@ -10,27 +10,28 @@ Once the dashboard opens, continue to Workers & Pages. This deployment can use a
 
 Dashboard sign-in and Wrangler authorization are separate steps. From the repository, run `pnpm exec wrangler login`, review the requested permissions in the browser, then check the selected account with `pnpm exec wrangler whoami`. If a device authorization code expires, start a new login instead of reusing it. Multiple Cloudflare accounts require an explicit choice before creating resources.
 
-Keep R2 and Workers Paid disabled for a zero-spend installation. D1 Free rejects operations at its quota instead of charging overages. Cloudflare Access has a Free plan; its onboarding may request payment details even though that plan is $0. Review the exact selected plan before completing onboarding, and stop if any paid service or usage-based subscription is requested. Account creation alone does not deploy the workspace.
+Keep R2 and Workers Paid disabled for a zero-spend installation. D1 Free rejects operations at its quota instead of charging overages. Leave Cloudflare Access/Zero Trust disabled too: its checkout can require a billing authorization. This app provides its own invited accounts through Better Auth. Account creation alone does not deploy the workspace.
 
-References: [Create a Cloudflare account](https://developers.cloudflare.com/fundamentals/account/create-account/), [Workers CLI setup](https://developers.cloudflare.com/workers/get-started/guide/), [D1 Free limits](https://developers.cloudflare.com/d1/reference/faq/), [Access onboarding](https://developers.cloudflare.com/cloudflare-one/setup/).
+References: [Create a Cloudflare account](https://developers.cloudflare.com/fundamentals/account/create-account/), [Workers CLI setup](https://developers.cloudflare.com/workers/get-started/guide/), [D1 Free limits](https://developers.cloudflare.com/d1/reference/faq/).
 
 ## 1. Create isolated resources
 
 Use Node 24 and pnpm from the repository's packageManager field. Install with `pnpm install --frozen-lockfile`. Log in using `pnpm exec wrangler login`. Provision a D1 database with `pnpm exec wrangler d1 create studio`. Images use the same database and remain private behind the application's authorization checks.
 
-Copy `wrangler.jsonc` to an ignored `.local/wrangler.production.json` **only if you also adjust its relative main, assets and migrations paths**. Alternatively set the D1 ID and production resource names in the tracked root config. Use separate resource names, audience and Worker for staging. Keep staging's Buffer key absent until a specifically authorized test. Local development always uses local bindings.
+Copy `wrangler.jsonc` to an ignored `.local/wrangler.production.json` **only if you also adjust its relative main, assets and migrations paths**. Alternatively set the D1 ID and production resource names in the tracked root config. Use separate resource names, authentication secrets and Worker for staging. Keep staging's Buffer key absent until a specifically authorized test. Local development always uses local bindings.
 
-The commands below assume the root config. For another config add `--config PATH` to each Wrangler command. Set `vars.ACCESS_TEAM_DOMAIN` to your HTTPS team domain, `vars.ACCESS_AUD` to the application audience, `vars.BUFFER_ORG_ID` to the authorized Buffer organization and `vars.MEDIA_ORIGIN` to the HTTPS origin that serves this Worker's delivery path. The example env file is a reference. The frontend reads none of these values.
+The commands below assume the root config. For another config add `--config PATH` to each Wrangler command. Set `vars.APP_ORIGIN` to the exact HTTPS workspace origin, `vars.BUFFER_ORG_ID` to the authorized Buffer organization and `vars.MEDIA_ORIGIN` to the HTTPS origin that serves this Worker's delivery path. The example env file is a reference. The frontend reads none of these values.
 
-## 2. Deploy privately and bootstrap membership
+## 2. Deploy and create the first account
 
-1. Build reviewed source with `pnpm build`. Inspect the bundle with `pnpm exec wrangler deploy --dry-run`.
-2. Apply schema to the intended database with `pnpm exec wrangler d1 migrations apply studio --remote`.
-3. Insert the first administrator with the D1 console. Substitute a verified email for the example: `INSERT INTO members(email,role,active) VALUES ('admin@example.org','administrator',1);`. Use lowercase email. Never seed local test accounts into a cloud database.
-4. Deploy via `pnpm exec wrangler deploy` after environment approval. An unconfigured Worker denies private data access.
-5. Protect the **workers.dev** hostname in Workers & Pages → Settings → Domains & Routes → Enable Cloudflare Access. Configure the self-hosted application's Allow policy for invited addresses or an approved IdP group. Enable HTTP-only cookies, HTTPS, a bounded session duration and the NGO's MFA policy. Use Access one-time PIN or organization SSO for recovery. Restrict preview URLs separately or disable them. The Worker independently rejects requests without a valid assertion.
-6. Create a more specific Access application on the delivery hostname's `/delivery/*` path with a Bypass policy for public media fetching. Alternatively route a separate media hostname to the same Worker and protect the workspace hostname. Requests for private API routes still require the workspace's Access JWT. Never bypass the workspace hostname broadly.
-7. Sign in as the bootstrap administrator. Set organization identity and IANA timezone in Settings, grant member access there, and maintain the corresponding Access policy. Revoking membership takes effect on the next protected request. Revoking the identity-provider session is an additional operator action.
+1. Build reviewed source with `pnpm build`. Inspect the bundle with `pnpm exec wrangler deploy --dry-run`. Keep preview URLs disabled and use the exact configured hostname for sign-in.
+2. Apply all five migrations to the intended database with `pnpm exec wrangler d1 migrations apply DB --remote`.
+3. Deploy with `pnpm exec wrangler deploy` after environment approval. Before authentication is configured, private APIs deny access. Record the generated workers.dev origin, then set `vars.APP_ORIGIN` and `vars.MEDIA_ORIGIN` to that origin.
+4. Generate a cryptographically random secret of at least 32 bytes and store it with `pnpm exec wrangler secret put AUTH_SECRET`. Keep it out of tracked config and chat. Redeploy the configured Worker. The sign-in page and approved delivery routes are public; the API verifies sessions and membership itself.
+5. Run `node scripts/bootstrap-admin.ts admin@example.org https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev .local/wrangler.production.json`, substituting the intended email, origin and exact config path. This creates the first administrator only for an empty membership table, or enrolls the already-designated active administrator. It refuses to overwrite an existing account. Open the private URL in `.local/admin-setup-link.txt` and have the owner choose their password in the browser. The link is single-use and expires after 24 hours. Do not commit or publicly share that file.
+6. In Settings, set the organization name and IANA timezone. Grant each teammate a role and privately share their invitation link. Invitees choose their own passwords. Email is an account identifier; invitation possession authorizes enrollment, and mailbox ownership is not independently verified. Invitations expire after seven days. Existing members can receive a one-hour setup/recovery link. Share recovery links only with the named member: they grant account control. Revocation removes active sessions and unused invitations.
+
+Public registration and public reset-email endpoints are unavailable. Keep at least two trusted administrators after onboarding. Administrators can issue recovery links for each other. If every administrator loses access, the deployment owner must use a controlled database recovery procedure; do not open public registration or remove membership checks. Preserve a backup and record the recovery action.
 
 ## 3. Connect Buffer
 
@@ -40,7 +41,7 @@ Store the key using `pnpm exec wrangler secret put BUFFER_API_KEY`. Use the hidd
 
 ## 4. Verify before publishing
 
-- Sign in and sign out with each real role. Check session expiry and denied access from an uninvited identity and an unsigned request.
+- Sign in and sign out with each real role. Check session expiry and denied access from an uninvited identity and a request without a valid session cookie.
 - Upload a nonconfidential test image. Confirm private media returns an authorization error in an anonymous window. Validate D1 persistence, image bytes and content type.
 - Confirm scheduled triggers are active under Worker Triggers. Record the production Worker version, migration numbers and account limits.
 - First use the deterministic local suite. A live end-to-end test requires separate explicit authorization for the image, caption, channels and time. During an authorized staging handoff verify that Buffer can fetch the exact delivery URL without authentication. Check the actual network post, its Buffer ID and each final status before accepting production.
@@ -65,4 +66,4 @@ Workers Free lists 100,000 requests/day and 10 ms CPU per request or cron invoca
 
 Buffer Free supports up to three connected channels and ten queued posts per channel at once. Buffer also enforces request windows. Keep the Buffer account on Free. There is no paid AI requirement.
 
-[Worker limits](https://developers.cloudflare.com/workers/platform/limits/) · [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/) · [D1 limits](https://developers.cloudflare.com/d1/platform/limits/) · [Buffer queue capacity](https://support.buffer.com/en-us/articles/how-many-posts-can-i-schedule-in-advance-Kmy2IEecqm) · [Buffer API limits](https://developers.buffer.com/guides/api-limits) · [Access JWT validation](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)
+[Worker limits](https://developers.cloudflare.com/workers/platform/limits/) · [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/) · [D1 limits](https://developers.cloudflare.com/d1/platform/limits/) · [Buffer queue capacity](https://support.buffer.com/en-us/articles/how-many-posts-can-i-schedule-in-advance-Kmy2IEecqm) · [Buffer API limits](https://developers.buffer.com/guides/api-limits) · [Better Auth security](https://better-auth.com/docs/reference/security)

@@ -10,6 +10,11 @@ export function Settings({ w, refresh, notify }: PageProps) {
     [email, setEmail] = useState(""),
     [role, setRole] = useState<Role>("designer"),
     [busy, lock] = useState(false),
+    [setup, setSetup] = useState<{
+      url: string;
+      kind: string;
+      email: string;
+    } | null>(null),
     [error, report] = useState("");
   const admin = w.user.role === "administrator";
   const workspaceUrl = new URL("/", window.location.origin).href;
@@ -23,9 +28,20 @@ export function Settings({ w, refresh, notify }: PageProps) {
   }
   async function mutate(path: string, body: unknown) {
     report("");
+    if (path.startsWith("members")) setSetup(null);
     lock(true);
     try {
-      await request("/api/" + path, body);
+      const result = await request<{
+        url?: string;
+        kind?: string;
+        email?: string;
+      }>("/api/" + path, body);
+      if (result.url)
+        setSetup({
+          url: result.url,
+          kind: result.kind || "invitation",
+          email: result.email || email,
+        });
       await refresh();
       notify("Settings updated.");
     } catch (err) {
@@ -147,15 +163,57 @@ export function Settings({ w, refresh, notify }: PageProps) {
           <section>
             <h2>Team access</h2>
             <p className="muted">
-              Allow members here and include their emails in your Cloudflare
-              Access policy.
+              Grant a role, then share the private invitation link with that
+              teammate. Existing members can receive a recovery link.
             </p>
+            {setup && (
+              <div className="note">
+                <label>
+                  Private {setup.kind} link
+                  <input
+                    readOnly
+                    value={setup.url}
+                    onFocus={(event) => event.currentTarget.select()}
+                  />
+                </label>
+                <p className="hint">
+                  Share this only with {setup.email}. Invitations expire in
+                  seven days; recovery links expire in one hour.
+                </p>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() =>
+                    void navigator.clipboard
+                      .writeText(setup.url)
+                      .then(() => notify("Private link copied."))
+                      .catch(() =>
+                        notify("Select the link and copy it manually."),
+                      )
+                  }
+                >
+                  Copy private link
+                </button>
+              </div>
+            )}
             {w.members.map((m) => (
               <div key={m.email} className="member">
                 <div>
                   <strong>{m.email}</strong>
                   <small>{m.role}</small>
                 </div>
+                {!w.local && (
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate("members/setup-link", { email: m.email })
+                    }
+                  >
+                    Setup / recovery link
+                  </button>
+                )}
                 {m.email !== w.user.email && (
                   <button
                     type="button"

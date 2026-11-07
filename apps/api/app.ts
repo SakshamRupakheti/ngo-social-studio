@@ -1,4 +1,5 @@
 import { allowWrite } from "./limits.ts";
+import { accountRoutes, memberSetupLink } from "./accounts.ts";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
@@ -141,6 +142,7 @@ export function createApp(
     }),
   );
   app.get("/api/entry", (c) => c.json({ local }));
+  if (!local) app.route("/api", accountRoutes());
   app.use("/api/*", async (c, next) => {
     const email = await identity(c.req.raw, c.env);
     if (!email) return c.json({ error: "Sign in to continue." }, 401);
@@ -536,7 +538,41 @@ export function createApp(
     )
       .bind(email, role, Number(active))
       .run();
+    if (!active) {
+      await c.env.DB.batch([
+        c.env.DB.prepare(
+          "DELETE FROM auth_session WHERE user_id IN (SELECT id FROM auth_user WHERE email=?)",
+        ).bind(email),
+        c.env.DB.prepare("DELETE FROM invitations WHERE email=?").bind(email),
+      ]);
+    }
+    if (
+      active &&
+      !local &&
+      !(await c.env.DB.prepare("SELECT id FROM auth_user WHERE email=?")
+        .bind(email)
+        .first())
+    ) {
+      return c.json({ ok: true, ...(await memberSetupLink(c.env, email)) });
+    }
     return c.json({ ok: true });
+  });
+  app.post("/api/members/setup-link", async (c) => {
+    admin(c.get("user"));
+    if (local)
+      fail(400, "Account setup links are available in the hosted workspace.");
+    const { email } = z
+      .object({ email: z.email().toLowerCase() })
+      .parse(await c.req.json());
+    if (
+      !(await c.env.DB.prepare(
+        "SELECT email FROM members WHERE email=? AND active=1",
+      )
+        .bind(email)
+        .first())
+    )
+      fail(404, "Active member unavailable.");
+    return c.json(await memberSetupLink(c.env, email));
   });
   app.all("/api/*", (c) => c.json({ error: "Endpoint unavailable." }, 404));
   app.get("*", async (c) => {

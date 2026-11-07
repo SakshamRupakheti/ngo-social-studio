@@ -1,8 +1,8 @@
 import { createApp } from "./app.ts";
-import { identity } from "./auth.ts";
+import { accountIdentity } from "./accounts.ts";
 import { bufferProvider, runJobs } from "./publishing.ts";
 import type { Env } from "./types.ts";
-const app = createApp(identity, bufferProvider);
+const app = createApp(accountIdentity, bufferProvider);
 export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledController, env: Env) {

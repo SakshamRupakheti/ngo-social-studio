@@ -25,6 +25,7 @@ import { Composer } from "./composer.tsx";
 import { Review } from "./review.tsx";
 import { Settings } from "./settings.tsx";
 import { Calendar } from "./calendar.tsx";
+import { AccountEntry } from "./account-entry.tsx";
 import "./studio.css";
 const nav = [
   { name: "Overview", id: "overview", icon: LayoutDashboard },
@@ -36,25 +37,23 @@ const nav = [
   { name: "Media library", id: "media", icon: Images },
   { name: "Settings", id: "settings", icon: Settings2 },
 ];
-function Login({
-  local,
+function LocalLogin({
   error,
   refresh,
 }: {
-  local: boolean;
   error: string;
   refresh: () => Promise<void>;
 }) {
-  const [problem, setProblem] = useState(""),
-    [role, select] = useState("designer"),
-    [busy, lock] = useState(false);
+  const [problem, setProblem] = useState("");
+  const [role, select] = useState("designer");
+  const [busy, lock] = useState(false);
   async function login() {
     lock(true);
     try {
-      if (local) await request("/local/sign-in", { role });
+      await request("/local/sign-in", { role });
       await refresh();
-    } catch (e) {
-      setProblem(message(e));
+    } catch (error) {
+      setProblem(message(error));
     } finally {
       lock(false);
     }
@@ -64,45 +63,36 @@ function Login({
       <Brand />
       <main className="entry-layout">
         <div className="entry-panel">
-          <p className="overline">
-            {local ? "Local preview" : "Private workspace"}
-          </p>
+          <p className="overline">Local preview</p>
           <h1>Editorial sign-in</h1>
           <p>
-            {local
-              ? "Choose a local role to work with drafts and approvals. Live publishing is disabled."
-              : "Sign in with your organization’s Cloudflare Access account."}
+            Choose a local role to work with drafts and approvals. Live
+            publishing is disabled.
           </p>
-          {local && (
-            <label>
-              Preview role
-              <select value={role} onChange={(e) => select(e.target.value)}>
-                <option value="designer">Designer</option>
-                <option value="administrator">Administrator</option>
-              </select>
-            </label>
-          )}
+          <label>
+            Preview role
+            <select
+              value={role}
+              onChange={(event) => select(event.target.value)}
+            >
+              <option value="designer">Designer</option>
+              <option value="administrator">Administrator</option>
+            </select>
+          </label>
           {(problem || error) && (
             <p role="alert" className="error">
               {problem || error}
             </p>
           )}
-          {local ? (
-            <button
-              type="button"
-              disabled={busy}
-              className="primary"
-              onClick={() => void login()}
-            >
-              Open workspace
-              <ArrowUpRight size={16} />
-            </button>
-          ) : (
-            <a className="primary" href="/api/login">
-              Sign in with Cloudflare Access
-              <ArrowUpRight size={16} />
-            </a>
-          )}
+          <button
+            type="button"
+            disabled={busy}
+            className="primary"
+            onClick={() => void login()}
+          >
+            Open workspace
+            <ArrowUpRight size={16} />
+          </button>
         </div>
         <div className="entry-art">
           <img
@@ -174,7 +164,9 @@ function App() {
         <p>Opening workspace…</p>
       </main>
     );
-  if (!w) return <Login local={local} error={err} refresh={refresh} />;
+  if (!local && (!w || path.startsWith("join/") || path.startsWith("reset/")))
+    return <AccountEntry path={path} error={err} refresh={refresh} />;
+  if (!w) return <LocalLogin error={err} refresh={refresh} />;
   const [page, id] = path.split("/"),
     p = w.posts.find((x) => x.id === id),
     props = { w, refresh, notify };
@@ -334,8 +326,16 @@ function App() {
           </div>
           <a
             aria-label="Sign out"
-            href={w.local ? "/local/logout" : "/cdn-cgi/access/logout"}
-            onClick={() => sessionStorage.clear()}
+            href={w.local ? "/local/logout" : "/"}
+            onClick={(event) => {
+              sessionStorage.clear();
+              if (!w.local) {
+                event.preventDefault();
+                void request("/api/auth/sign-out", {})
+                  .then(() => location.assign("/"))
+                  .catch((error) => notify(message(error)));
+              }
+            }}
           >
             <LogOut size={16} />
           </a>
