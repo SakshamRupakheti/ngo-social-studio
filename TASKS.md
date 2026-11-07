@@ -16,7 +16,7 @@
 - Strict type checking, formatting check and Vite production build passed.
 - Biome lint passed with non-blocking style warnings for CSS specificity and non-null assertions.
 - 13 Vitest cases passed across validation, JWT verification, authorization boundaries and the Buffer wire contract.
-- 6 Playwright cases passed against isolated local Workers, D1 and R2. They cover the eight requested scenarios. Tests also verify private image access, approved image bytes, cancellation, reapproval after edits, reconciliation, logout and responsive navigation.
+- 7 Playwright cases passed against isolated local Workers, D1 and R2. They cover the eight requested scenarios. Tests also verify private image access, approved image bytes, cancellation, reapproval after edits, reconciliation, logout, responsive navigation, team access revocation and the hosted workspace link.
 - A parallel dispatch test issued two worker ticks for the same jobs, preserved the successful platform receipts and refused a retry for the unknown delivery.
 - Production dependency audit reported no known vulnerabilities at verification time. Wrangler bundled the production entry and static assets with a dry run.
 - All social-network outcomes used in the suite came from the test adapter. Tests never called social accounts.
@@ -29,4 +29,8 @@
 4. Run one explicitly approved publication and check media fetching, Buffer receipts and final network delivery per channel. Exercise cancellation only on authorized staging content.
 5. Rehearse D1 and R2 restoration with publishing disabled. Confirm the NGO's retention terms, cost monitoring and operational owner before production approval.
 
-See docs/deployment/cloudflare.md and docs/deployment/github.md for exact setup steps. The repository has a local release-candidate tag. No remote repository, pull request, cloud deployment or external publication was created by this build.
+## GitHub publication
+
+The source and existing commit history are published at https://github.com/SakshamRupakheti/ngo-social-studio. The main branch contains the initial release candidate, and the team-sharing update is on feat/share-workspace. The v0.1.0-rc.1 tag is also pushed. The account owner is the initial code owner. GitHub CI and repository protection are being verified during publication.
+
+Cloudflare authorization is still required before provisioning the hosted workspace. The administrator address supplied by the owner is stored only in an ignored local bootstrap file. Buffer credentials are also pending. Follow docs/deployment/cloudflare.md for the remaining cloud and live-publishing acceptance steps.
