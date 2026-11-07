@@ -23,7 +23,7 @@
 
 ## Next milestone: NGO staging acceptance
 
-1. Identify the NGO GitHub owner, maintainer team and security contact. Review the local candidate, publish the repository and check CI on GitHub. Activate code ownership and the documented ruleset.
+1. Review pull request #3 and confirm the NGO maintainer team and security contact. Repository publication, GitHub CI and main-branch protection are complete; merging the reviewed pull request activates its initial CODEOWNERS assignment.
 2. Provision isolated Cloudflare staging resources and configure the Access identity policy, session settings, initial administrator and HTTPS delivery origin. Verify login and recovery with real identities.
 3. Store the authorized Buffer key as a Worker secret, configure its organization ID and verify the three discovered destinations. Confirm account quotas before scheduling.
 4. Run one explicitly approved publication and check media fetching, Buffer receipts and final network delivery per channel. Exercise cancellation only on authorized staging content.

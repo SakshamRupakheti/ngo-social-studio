@@ -2,6 +2,18 @@
 
 Use an NGO-controlled Cloudflare account. Resource names below are examples for a new installation. Review account plans and R2 billing terms before provisioning. This repository performs no remote provisioning during installation or tests.
 
+## 0. Set up the account
+
+Open [Cloudflare signup](https://dash.cloudflare.com/sign-up). Use an identity controlled by the installation owner. The signup screen offers Google, GitHub and Apple sign-in, or email and password. Complete sign-in, any human verification, and email verification directly in the browser. Keep passwords and verification codes out of repository files, issues and chat.
+
+Once the dashboard opens, continue to Workers & Pages. This deployment can use a Cloudflare-provided `workers.dev` address; buying or transferring a domain is not required. Keep the Workers Free plan for the initial installation unless the owner approves an upgrade.
+
+Dashboard sign-in and Wrangler authorization are separate steps. From the repository, run `pnpm exec wrangler login`, review the requested permissions in the browser, then check the selected account with `pnpm exec wrangler whoami`. If a device authorization code expires, start a new login instead of reusing it. Multiple Cloudflare accounts require an explicit choice before creating resources.
+
+R2 needs a separate subscription activation through its checkout, even though it includes a monthly free allowance. Review the current checkout and usage pricing with the account owner before activating it. Account creation alone does not deploy the workspace. The remaining steps create storage, configure member sign-in, and connect Buffer.
+
+References: [Create a Cloudflare account](https://developers.cloudflare.com/fundamentals/account/create-account/), [Workers CLI setup](https://developers.cloudflare.com/workers/get-started/guide/), [R2 activation](https://developers.cloudflare.com/r2/get-started/).
+
 ## 1. Create isolated resources
 
 Use Node 24 and pnpm from the repository's packageManager field. Install with `pnpm install --frozen-lockfile`. Log in using `pnpm exec wrangler login`. Provision a D1 database with `pnpm exec wrangler d1 create studio` and a private Standard R2 bucket with `pnpm exec wrangler r2 bucket create ngo-social-studio-media`. Keep R2 public development URLs and bucket domains disabled.
