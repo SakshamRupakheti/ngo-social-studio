@@ -12,8 +12,8 @@ importers:
         specifier: 0.45.4
         version: 0.45.4(@cloudflare/workers-types@5.20261106.1)
       hono:
-        specifier: 4.13.16
-        version: 4.13.16
+        specifier: 4.13.18
+        version: 4.13.18
       image-size:
         specifier: 2.1.0
         version: 2.1.0
@@ -943,8 +943,8 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
-  hono@4.13.16:
-    resolution: {integrity: sha512-AOLOEhvrV+iH92xXCnFr/5+3KjPKcI3xP63XJtX5spAnkznPdHijlIsUTpi7/9EhWqrTCekw5c5zh1K+YsVw7A==}
+  hono@4.13.18:
+    resolution: {integrity: sha512-H9q/E1XizaWstJxUW881dmLxEj+t/TrGGnyxINkm4+sK0qUwsMtFdo2BWI9Vs3cIS19MU6b6iCijoUoEf4f3DA==}
     engines: {node: '>=16.9.0'}
 
   image-size@2.1.0:
@@ -1814,7 +1814,7 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  hono@4.13.16: {}
+  hono@4.13.18: {}
 
   image-size@2.1.0: {}
 
